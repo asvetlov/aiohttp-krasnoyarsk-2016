@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ru" >
+  <head>
+    <title>Why do you need async web server</title>
+    <meta name="description" content="">
+    <meta name="author" content="Andrew Svetlov">
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/custom.css" id="theme">
+
+    <!-- Code syntax highlighting -->
+    <link rel="stylesheet" href="lib/css/custom.css">
+
+    <!-- Printing and PDF exports -->
+    <script>
+     var link = document.createElement( 'link' );
+     link.rel = 'stylesheet';
+     link.type = 'text/css';
+     link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+     document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+
+    <!--[if lt IE 9]>
+    <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section>
+          <h1>Async web servers</h1>
+          <h2>Why do you need them?</h2>
+          <p>
+            Andrew Svetlov
+            <p>
+              <small>http://asvetlov.blogspot.com</small><br>
+              <small>andrew.svetlov@gmail.com</small><br>
+              <small>http://asvetlov.github.io/aiohttp-krasnoyarsk-2016/</small>
+            </p>
+          </p>
+        </section>
+        <section>
+          <h2>Bio</h2>
+          <p>
+            <ul>
+              <li>Use Python for more than 16 years</li>
+              <li>Python Core Developer since 2012</li>
+              <li><i>asyncio</i> committer</li>
+              <li><i>aiohttp</i> maintainer</li>
+              <li>Author of a dozen libraries under <i>aio-libs</i> umbrella</li>
+            </ul
+          </p>
+        </section>
+        <section>
+          <section>
+            <h1>Why?</h1>
+            <ul>
+              <li>It's cool!!!</li>
+              <li class="fragment">I'm an author</li>
+              <li class="fragment">Websockets out-of-the-box</li>
+              <li class="fragment">...</li>
+            </ul>
+          </section>
+          <section data-background="Jupiter_bayan_accordion.jpg" data-background-size="60%">
+          </section>
+          <section>
+            <h1>To save memory!</h1>
+          </section>
+          <section>
+            <h2>WSGI setup</h2>
+            <ul>
+              <li>500 Mb process</li>
+              <li>100 ms response time</li>
+              <li>70% serving requests</li>
+              <li>7 RPS</li>
+              <li>5% CPU usage</li>
+            </ul>
+          </section>
+          <section>
+            <h2>aiohttp</h2>
+            <ul>
+              <li>500 Mb process</li>
+              <li>103-105 ms response time</li>
+              <li>100 RPS</li>
+              <li>70% CPU usage</li>
+            </ul>
+          </section>
+          <section>
+            <h2>Failure</h2>
+            <ul>
+              <li>Latency: 50 ms → 3-15 sec</li>
+              <li>Response: 50 ms → 0.5-1 sec</li>
+            </ul>
+          </section>
+        </section>
+        <section>
+          <section>
+            <h1>Concurrent execution</h1>
+          </section>
+          <section>
+            <h2>Naive approach</h2>
+            <pre><code>
+async def handler(request):
+    value1 = await get_part1(request)
+    value2 = await get_part2(request)
+    return render_response(value1, value2)
+            </code></pre>
+          </section>
+          <section>
+            <h2>Explicit concurrency</h2>
+            <pre><code>
+async def handler(request):
+    value1, value2 = await asyncio.gather(get_part1(request),
+                                          get_part2(request),
+                                          loop=request.app.loop)
+    return render_response(value1, value2)
+            </code></pre>
+          </section>
+          <section data-background="pipe_vs_seq.svg" data-background-size="60%">
+          </section>
+          <section>
+            <pre><code>
+async def handler(request):
+    value1, value2 = await asyncio.gather(get_part1(request),
+                                          get_part2(request),
+                                          loop=request.app.loop)
+    return render_response(value1, value2)
+            </code></pre>
+          </section>
+          <section>
+            <h2>Hidden concurrency</h2>
+            <pre><code>
+async def handler(request):
+    value1 = await get_part1(request)
+    value2 = await get_part2(request)
+    return render_response(value1, value2)
+            </code></pre>
+          </section>
+        </section>
+        <section>
+          <section>
+            <h1>HTTP Keep-Alive</h1>
+          </section>
+          <section>
+            <h2>Server-side connections</h2>
+            <ul>
+              <li>NGIXG</li>
+              <li>Backend (aiohttp)</li>
+            </ul>
+          </section>
+          <section>
+            <h2>Client connections</h2>
+            <pre><code>
+async def handler(request):
+    session = request.app['client_session']
+    async with session.get(url) as resp:
+        body = yield from resp.json()
+    return render_json(body)
+            </code></pre>
+          </section>
+          <section>
+            <h2>DB connection pools</h2>
+            <pre><code>
+async def handler(request):
+    async with request.app['db'] as conn:
+        await conn.execute('SELECT * FROM ...')
+            </code></pre>
+          </section>
+        </section>
+        <section>
+          <h1>Timeouts</h1>
+          <pre><code>
+with asyncio_timeout.timeout(10):
+    async with session.get(url) as response:
+        assert response.status == 200
+        return await response.read()
+          </code></pre>
+        </section>
+        <section>
+          <section>
+            <h1>Performance</h1>
+          </section>
+        </section>
+        <section>
+          <h1>Questions?</h1>
+          <p>
+            Andrew Svetlov
+            <p>
+              <small>http://asvetlov.blogspot.com</small><br>
+              <small>andrew.svetlov@gmail.com</small><br>
+              <small>http://asvetlov.github.io/aiohttp-krasnoyarsk-2016/</small>
+            </p>
+          </p>
+        </section>
+      </div>
+    </div>
+
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.js"></script>
+
+    <script>
+     // Full list of configuration options available at:
+     // https://github.com/hakimel/reveal.js#configuration
+     Reveal.initialize({
+       controls: true,
+       progress: true,
+       history: true,
+       center: true,
+       slideNumber: true,
+       transition: 'slide', // none/fade/slide/convex/concave/zoom
+       // Optional reveal.js plugins
+       dependencies: [
+         { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+         { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+         { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+         { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+         { src: 'plugin/zoom-js/zoom.js', async: true },
+         { src: 'plugin/notes/notes.js', async: true }
+       ]
+     });
+    </script>
+
+  </body>
+</html>
