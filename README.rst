@@ -1,7 +1,7 @@
-pytest-and-docker-kyiv-2016
-===========================
+aiohttp-krasnoyarsk-2016
+========================
 
-Presentation for "Building robust test suite using pytest and docker" talk.
+Presentation for "Why do you need async web server" talk.
 
 
-Open http://asvetlov.github.io/pytest-and-docker-kyiv-2016/
+Open http://asvetlov.github.io/aiohttp-krasnoyarsk-2016/
